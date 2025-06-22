@@ -22,6 +22,7 @@ import streamlit as st
 import yt_dlp
 from openai import OpenAI
 import tiktoken
+import yaml
 
 # --------------------------------------
 # Configuration and Setup
@@ -255,6 +256,12 @@ def get_openai_client(api_key=None):
 def _num_tokens(txt: str, encoder):
     return len(encoder.encode(txt))
 
+def load_prompts(path="prompts.yaml"):
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+    
+PROMPTS = load_prompts()
+
 def _summarise_chunk(client, model: str, chunk: str, is_segment: bool = False) -> str:
     """Summarize a chunk of text with enhanced prompts for better quality"""
     if is_segment:
@@ -422,6 +429,7 @@ def process_youtube_video(video_url: str, model: str, api_key: str, progress_pla
 # ----
 # Streamlit UI
 # ----
+
 def main():
     st.title("🎬 YouTube Video Summarizer")
     st.markdown("---")
@@ -466,11 +474,20 @@ def main():
         progress_placeholder = st.empty()
         status_placeholder = st.empty()
 
-        # File info
+        # File info and download button (moved here)
         if st.session_state.summary_content:
             st.markdown("---")
             st.subheader("ℹ️ Summary Info")
-            # This will be updated after processing
+            st.success(f"💾 Saved as: `{st.session_state.get('output_file', 'summary.md')}`")
+            st.info(f"📝 Word count: {st.session_state.get('word_count', 0):,}")
+
+            st.download_button(
+                label="⬇️ Download Markdown",
+                data=st.session_state.summary_content,
+                file_name=st.session_state.get('output_file', 'summary.md'),
+                mime="text/markdown",
+                use_container_width=True
+            )
 
     with right_col:
         st.header("📝 Summary")
@@ -499,21 +516,9 @@ def main():
 
         if doc:
             st.session_state.summary_content = doc
+            st.session_state.output_file = output_file
+            st.session_state.word_count = word_count_result
             markdown_placeholder.markdown(doc)
-
-            # Update file info in left column
-            with left_col:
-                st.success(f"💾 Saved as: `{output_file}`")
-                st.info(f"📝 Word count: {word_count_result:,}")
-
-            # Download button
-            st.download_button(
-                label="⬇️ Download Markdown",
-                data=doc,
-                file_name=output_file,
-                mime="text/markdown",
-                use_container_width=True
-            )
 
         st.session_state.processing = False
 
