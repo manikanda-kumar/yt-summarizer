@@ -241,22 +241,21 @@ def split_transcript(transcript: List[Dict], chapters: List[Tuple[str, int]]) ->
 # --------------------------------------
 # OpenAI Functions
 # --------------------------------------
-@st.cache_resource
-def get_openai_client():
-    """Initialize OpenAI client with caching"""
-    api_key = os.getenv("OPENAI_API_KEY")
+def get_openai_client(api_key=None):
+    """Initialize OpenAI client with optional API key"""
+    if api_key is None:
+        api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        st.error("Please set the OPENAI_API_KEY environment variable.")
+        st.error("Please provide your OpenAI API key.")
         st.stop()
     return OpenAI(api_key=api_key)
 
-client = get_openai_client()
-_ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
+#_ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
-def _num_tokens(txt: str) -> int:
-    return len(_ENCODER.encode(txt))
+def _num_tokens(txt: str, encoder):
+    return len(encoder.encode(txt))
 
-def _summarise_chunk(model: str, chunk: str, is_segment: bool = False) -> str:
+def _summarise_chunk(client, model: str, chunk: str, is_segment: bool = False) -> str:
     """Summarize a chunk of text with enhanced prompts for better quality"""
     if is_segment:
         prompt = (
@@ -282,15 +281,15 @@ def _summarise_chunk(model: str, chunk: str, is_segment: bool = False) -> str:
     )
     return resp.choices[0].message.content.strip()
 
-def summarise_long_text(model: str, text: str, max_chunk_tokens: int = 3000, is_segment: bool = False) -> str:
+def summarise_long_text(client, encoder, model: str, text: str, max_chunk_tokens: int = 3000, is_segment: bool = False) -> str:
     """Summarize long text without target length restrictions"""
-    if _num_tokens(text) <= max_chunk_tokens:
-        return _summarise_chunk(model, text, is_segment)
+    if _num_tokens(text, encoder) <= max_chunk_tokens:
+        return _summarise_chunk(client, model, text, is_segment)
 
     sentences = re.split(r"(?<=[.!?])\s+", text)
     chunks, cur = [], ""
     for s in sentences:
-        if _num_tokens(cur + " " + s) > max_chunk_tokens:
+        if _num_tokens(cur + " " + s, encoder) > max_chunk_tokens:
             chunks.append(cur.strip())
             cur = s
         else:
@@ -298,7 +297,7 @@ def summarise_long_text(model: str, text: str, max_chunk_tokens: int = 3000, is_
     if cur:
         chunks.append(cur.strip())
 
-    partials = [_summarise_chunk(model, c, is_segment) for c in chunks]
+    partials = [_summarise_chunk(client,model, c, is_segment) for c in chunks]
     section_summaries = '\n\n'.join([f'Part {i+1}: {summary}' for i, summary in enumerate(partials)])
     combined_prompt = (
         f"Create a comprehensive and detailed summary by combining and synthesizing the following "
@@ -314,7 +313,7 @@ def summarise_long_text(model: str, text: str, max_chunk_tokens: int = 3000, is_
     )
     return resp.choices[0].message.content.strip()
 
-def create_overall_summary(model: str, chapter_summaries: Dict[str, str], video_title: str) -> str:
+def create_overall_summary(client, model: str, chapter_summaries: Dict[str, str], video_title: str) -> str:
     """Create a comprehensive overall summary from all chapter summaries"""
     all_summaries = '\n\n'.join([f'**{title}:**\n{summary}' for title, summary in chapter_summaries.items()])
 
@@ -362,9 +361,13 @@ def create_document(title: str, ch_summaries: Dict[str, str], overall_summary: s
 # --------------------------------------
 # Main Processing Function
 # --------------------------------------
-def process_youtube_video(video_url: str, model: str, progress_placeholder, status_placeholder):
+def process_youtube_video(video_url: str, model: str, api_key: str, progress_placeholder, status_placeholder):
     """Process YouTube video and return markdown content"""
     try:
+        # Initialize OpenAI client and encoder
+        client = get_openai_client(api_key)
+        encoder = tiktoken.encoding_for_model(model if model in ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"] else "gpt-3.5-turbo")
+
         # Fetch video info and transcript in one call
         status_placeholder.info("📥 Fetching video information and transcript...")
         video_title, description, transcript = fetch_info_and_transcript(video_url)
@@ -389,12 +392,12 @@ def process_youtube_video(video_url: str, model: str, progress_placeholder, stat
 
         for i, (title, text) in enumerate(buckets.items()):
             status_placeholder.info(f"🔎 Summarizing: {title}")
-            chapter_summaries[title] = summarise_long_text(model, text, is_segment=is_segment_based)
+            chapter_summaries[title] = summarise_long_text(client, encoder, model, text, is_segment=is_segment_based)
             progress_placeholder.progress(0.50 + (0.30 * (i + 1) / total_sections))
 
         # Create overall summary
         status_placeholder.info("🧠 Creating overall summary...")
-        overall_summary = create_overall_summary(model, chapter_summaries, video_title)
+        overall_summary = create_overall_summary(client, model, chapter_summaries, video_title)
         progress_placeholder.progress(0.90)
 
         # Generate document
@@ -416,9 +419,9 @@ def process_youtube_video(video_url: str, model: str, progress_placeholder, stat
         status_placeholder.error(f"❌ Error: {str(e)}")
         return None, None, 0
 
-# --------------------------------------
+# ----
 # Streamlit UI
-# --------------------------------------
+# ----
 def main():
     st.title("🎬 YouTube Video Summarizer")
     st.markdown("---")
@@ -428,6 +431,14 @@ def main():
 
     with left_col:
         st.header("📥 Input")
+
+        # API Key input
+        api_key = st.text_input(
+            "OpenAI API Key:",
+            type="password",
+            placeholder="sk-...",
+            help="Enter your OpenAI API key. It will not be stored."
+        )
 
         # URL input
         video_url = st.text_input(
@@ -447,7 +458,7 @@ def main():
         # Processing button
         process_button = st.button(
             "▶️ Generate Summary",
-            disabled=not video_url or st.session_state.processing,
+            disabled=not video_url or not api_key or st.session_state.processing,
             use_container_width=True
         )
 
@@ -473,7 +484,7 @@ def main():
             markdown_placeholder.markdown(st.session_state.summary_content)
 
     # Process video when button is clicked
-    if process_button and video_url:
+    if process_button and video_url and api_key:
         st.session_state.processing = True
         st.session_state.last_url = video_url
 
@@ -483,7 +494,7 @@ def main():
 
         # Process the video
         doc, output_file, word_count_result = process_youtube_video(
-            video_url, model_option, progress_placeholder, status_placeholder
+            video_url, model_option, api_key, progress_placeholder, status_placeholder
         )
 
         if doc:
