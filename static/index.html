@@ -4,459 +4,672 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Video Summarizer</title>
+    <!-- Add marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #1a1a1a;
-            color: #ffffff;
-            min-height: 100vh;
-            padding: 20px;
-        }
+    body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #1a1a1a;
+    color: #ffff;
+    min-height: 100vh;
+    padding: 20px;
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+    .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    }
 
-        .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 40px;
-            padding: 20px 0;
-        }
+    .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 40px;
+    padding: 20px 0;
+    }
 
-        .logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            margin-right: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
+    .logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    }
 
-        .title {
-            font-size: 32px;
-            font-weight: 700;
-            color: #ffffff;
-        }
+    .title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffff;
+    }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            align-items: start;
-        }
+    .main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+    }
 
-        .section {
-            background-color: #2a2a2a;
-            border-radius: 12px;
-            padding: 30px;
-            border: 1px solid #3a3a3a;
-        }
+    .section {
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    padding: 30px;
+    border: 1px solid #3a3a3a;
+    }
 
-        .section-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 25px;
-        }
+    .section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    }
 
-        .section-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-            font-size: 20px;
-        }
+    .section-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+    font-size: 20px;
+    }
 
-        .section-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #ffffff;
-        }
+    .section-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #ffff;
+    }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+    .form-group {
+    margin-bottom: 20px;
+    }
 
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #cccccc;
-            font-weight: 500;
-            font-size: 14px;
-        }
+    .form-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #cccc;
+    font-weight: 500;
+    font-size: 14px;
+    }
 
-        .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            background-color: #3a3a3a;
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
+    .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    color: #ffff;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    }
 
-        .form-input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+    .form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
-        .form-input::placeholder {
-            color: #888888;
-        }
+    .form-input::placeholder {
+    color: #8888;
+    }
 
-        .form-select {
-            width: 100%;
-            padding: 12px 16px;
-            background-color: #3a3a3a;
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 16px;
-            cursor: pointer;
-        }
+    .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    color: #ffff;
+    font-size: 16px;
+    cursor: pointer;
+    }
 
-        .password-container {
-            position: relative;
-        }
+    .password-container {
+    position: relative;
+    }
 
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #888888;
-            cursor: pointer;
-            font-size: 16px;
-        }
+    .password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #8888;
+    cursor: pointer;
+    font-size: 16px;
+    }
 
-        .generate-btn {
-            width: 100%;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 10px;
-        }
+    .generate-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    color: #ffff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-top: 10px;
+    }
 
-        .generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-        }
+    .generate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
 
-        .generate-btn:disabled {
-            background: #4a4a4a;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
+    .generate-btn:disabled {
+    background: #4a4a4a;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    }
 
-        .summary-content {
-            background-color: #1e3a8a;
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 200px;
-            font-size: 16px;
-            line-height: 1.6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #93c5fd;
-        }
+    .summary-content {
+    background-color: #1e3a8a;
+    border-radius: 8px;
+    padding: 20px;
+    min-height: 200px;
+    font-size: 16px;
+    line-height: 1.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #93c5fd;
+    }
 
-        .summary-text {
-            display: none;
-            text-align: left;
-            color: #ffffff;
-            white-space: pre-wrap;
-        }
+    .summary-text {
+    display: none;
+    text-align: left;
+    color: #ffff;
+    white-space: pre-wrap;
+    }
 
-        .download-btn {
-            width: 100%;
-            padding: 12px 20px;
-            background-color: #059669;
-            border: none;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: background-color 0.3s ease;
-            display: none;
-        }
+    /* Markdown viewer styles */
+    .markdown-viewer {
+    display: none;
+    text-align: left;
+    color: #ffff;
+    line-height: 1.7;
+    }
 
-        .download-btn:hover {
-            background-color: #047857;
-        }
+    .markdown-viewer h1, .markdown-viewer h2, .markdown-viewer h3, 
+    .markdown-viewer h4, .markdown-viewer h5, .markdown-viewer h6 {
+    color: #667eea;
+    margin: 20px 0 10px 0;
+    font-weight: 600;
+    }
 
-        .loading {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            color: #93c5fd;
-        }
+    .markdown-viewer h1 { font-size: 28px; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+    .markdown-viewer h2 { font-size: 24px; border-bottom: 1px solid #4a4a4a; padding-bottom: 6px; }
+    .markdown-viewer h3 { font-size: 20px; }
+    .markdown-viewer h4 { font-size: 18px; }
+    .markdown-viewer h5 { font-size: 16px; }
+    .markdown-viewer h6 { font-size: 14px; }
 
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #3a3a3a;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
+    .markdown-viewer p {
+    margin: 12px 0;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+    .markdown-viewer ul, .markdown-viewer ol {
+    margin: 12px 0;
+    padding-left: 24px;
+    }
 
-        .error-message {
-            background-color: #dc2626;
-            color: #ffffff;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-top: 15px;
-            display: none;
-        }
+    .markdown-viewer li {
+    margin: 6px 0;
+    }
 
-        .info-icon {
-            color: #888888;
-            margin-left: 8px;
-            cursor: help;
-        }
+    .markdown-viewer blockquote {
+    border-left: 4px solid #667eea;
+    margin: 16px 0;
+    padding: 12px 16px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    font-style: italic;
+    }
 
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-            
-            .section {
-                padding: 20px;
-            }
-        }
+    .markdown-viewer code {
+    background-color: #3a3a3a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #f8f8f2;
+    }
+
+    .markdown-viewer pre {
+    background-color: #2a2a2a;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 16px 0;
+    border: 1px solid #4a4a4a;
+    }
+
+    .markdown-viewer pre code {
+    background: none;
+    padding: 0;
+    }
+
+    .markdown-viewer strong {
+    color: #fbbf24;
+    font-weight: 600;
+    }
+
+    .markdown-viewer em {
+    color: #a78bfa;
+    font-style: italic;
+    }
+
+    .markdown-viewer a {
+    color: #60a5fa;
+    text-decoration: none;
+    }
+
+    .markdown-viewer a:hover {
+    text-decoration: underline;
+    }
+
+    .markdown-viewer hr {
+    border: none;
+    height: 1px;
+    background-color: #4a4a4a;
+    margin: 24px 0;
+    }
+
+    .markdown-viewer table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    }
+
+    .markdown-viewer th, .markdown-viewer td {
+    border: 1px solid #4a4a4a;
+    padding: 8px 12px;
+    text-align: left;
+    }
+
+    .markdown-viewer th {
+    background-color: #3a3a3a;
+    font-weight: 600;
+    }
+
+    /* View toggle buttons */
+    .view-toggle {
+    display: none;
+    margin-bottom: 15px;
+    }
+
+    .toggle-btn {
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    color: #cccc;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 8px;
+    transition: all 0.3s ease;
+    }
+
+    .toggle-btn.active {
+    background-color: #667eea;
+    color: #ffff;
+    border-color: #667eea;
+    }
+
+    .toggle-btn:hover {
+    background-color: #4a4a4a;
+    }
+
+    .toggle-btn.active:hover {
+    background-color: #5a6fd8;
+    }
+
+    .download-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #059669;
+    border: none;
+    border-radius: 8px;
+    color: #ffff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s ease;
+    display: none;
+    }
+
+    .download-btn:hover {
+    background-color: #047857;
+    }
+
+    .loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #93c5fd;
+    }
+
+    .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #3a3a3a;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+    }
+
+    @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+    }
+
+    .error-message {
+    background-color: #dc2626;
+    color: #ffff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 15px;
+    display: none;
+    }
+
+    .info-icon {
+    color: #8888;
+    margin-left: 8px;
+    cursor: help;
+    }
+
+    @media (max-width: 768px) {
+    .main-content {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    }
+    
+    .section {
+    padding: 20px;
+    }
+    }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="logo">📺</div>
-            <h1 class="title">YouTube Video Summarizer</h1>
-        </div>
+    <div class="header">
+    <div class="logo">📺</div>
+    <h1 class="title">YouTube Video Summarizer</h1>
+    </div>
 
-        <div class="main-content">
-            <!-- Input Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">📥</div>
-                    <h2 class="section-title">Input</h2>
-                </div>
+    <div class="main-content">
+    <!-- Input Section -->
+    <div class="section">
+    <div class="section-header">
+    <div class="section-icon">📥</div>
+    <h2 class="section-title">Input</h2>
+    </div>
 
-                <form id="summarizerForm">
-                    <div class="form-group">
-                        <label class="form-label" for="apiKey">
-                            OpenAI API Key:
-                            <span class="info-icon" title="Your OpenAI API key for processing">ⓘ</span>
-                        </label>
-                        <div class="password-container">
-                            <input type="password" id="apiKey" name="api_key" class="form-input" 
-                                   placeholder="sk-..." required>
-                            <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
-                        </div>
-                    </div>
+    <form id="summarizerForm">
+    <div class="form-group">
+    <label class="form-label" for="apiKey">
+    OpenAI API Key:
+    <span class="info-icon" title="Your OpenAI API key for processing">ⓘ</span>
+    </label>
+    <div class="password-container">
+    <input type="password" id="apiKey" name="api_key" class="form-input" 
+    placeholder="sk-..." required>
+    <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
+    </div>
+    </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="youtubeUrl">
-                            YouTube URL:
-                            <span class="info-icon" title="Paste the YouTube video URL here">ⓘ</span>
-                        </label>
-                        <input type="url" id="youtubeUrl" name="youtube_url" class="form-input" 
-                               placeholder="https://www.youtube.com/watch?v=..." required>
-                    </div>
+    <div class="form-group">
+    <label class="form-label" for="youtubeUrl">
+    YouTube URL:
+    <span class="info-icon" title="Paste the YouTube video URL here">ⓘ</span>
+    </label>
+    <input type="url" id="youtubeUrl" name="youtube_url" class="form-input" 
+    placeholder="https://www.youtube.com/watch?v=..." required>
+    </div>
 
-                    <div class="form-group">
-                        <label class="form-label" for="aiModel">
-                            AI Model:
-                            <span class="info-icon" title="Select the AI model for summarization">ⓘ</span>
-                        </label>
-                        <select id="aiModel" name="ai_model" class="form-select">
-                            <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                            <option value="gpt-4">gpt-4</option>
-                            <option value="gpt-4-turbo">gpt-4-turbo</option>
-                        </select>
-                    </div>
+    <div class="form-group">
+    <label class="form-label" for="aiModel">
+    AI Model:
+    <span class="info-icon" title="Select the AI model for summarization">ⓘ</span>
+    </label>
+    <select id="aiModel" name="ai_model" class="form-select">
+    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+    <option value="gpt-4">gpt-4</option>
+    <option value="gpt-4-turbo">gpt-4-turbo</option>
+    </select>
+    </div>
 
-                    <button type="submit" class="generate-btn" id="generateBtn">
-                        <span id="btnText">✅ Generate Summary</span>
-                    </button>
+    <button type="submit" class="generate-btn" id="generateBtn">
+    <span id="btnText">✅ Generate Summary</span>
+    </button>
 
-                    <div class="error-message" id="errorMessage"></div>
-                </form>
-            </div>
+    <div class="error-message" id="errorMessage"></div>
+    </form>
+    </div>
 
-            <!-- Summary Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">📄</div>
-                    <h2 class="section-title">Summary</h2>
-                </div>
+    <!-- Summary Section -->
+    <div class="section">
+    <div class="section-header">
+    <div class="section-icon">📄</div>
+    <h2 class="section-title">Summary</h2>
+    </div>
 
-                <div class="summary-content" id="summaryContent">
-                    <div id="placeholder">
-                        💡 Enter a YouTube URL and click 'Generate Summary' to see the results here!
-                    </div>
-                    <div class="loading" id="loading">
-                        <div class="spinner"></div>
-                        Processing video... This may take a few moments.
-                    </div>
-                    <div class="summary-text" id="summaryText"></div>
-                </div>
+    <!-- View toggle buttons -->
+    <div class="view-toggle" id="viewToggle">
+    <button class="toggle-btn active" id="markdownBtn" onclick="switchView('markdown')">
+    📝 Markdown View
+    </button>
+    <button class="toggle-btn" id="rawBtn" onclick="switchView('raw')">
+    📄 Raw Text
+    </button>
+    </div>
 
-                <button class="download-btn" id="downloadBtn" onclick="downloadSummary()">
-                    📥 Download as Markdown
-                </button>
-            </div>
-        </div>
+    <div class="summary-content" id="summaryContent">
+    <div id="placeholder">
+    💡 Enter a YouTube URL and click 'Generate Summary' to see the results here!
+    </div>
+    <div class="loading" id="loading">
+    <div class="spinner"></div>
+    Processing video... This may take a few moments.
+    </div>
+    <div class="summary-text" id="summaryText"></div>
+    <div class="markdown-viewer" id="markdownViewer"></div>
+    </div>
+
+    <button class="download-btn" id="downloadBtn" onclick="downloadSummary()">
+    📥 Download as Markdown
+    </button>
+    </div>
+    </div>
     </div>
 
     <script>
-        let currentSummary = '';
-        let currentVideoTitle = '';
+    let currentSummary = '';
+    let currentVideoTitle = '';
+    let currentView = 'markdown'; // Default to markdown view
 
-        function togglePassword() {
-            const apiKeyInput = document.getElementById('apiKey');
-            const toggleBtn = document.querySelector('.password-toggle');
-            
-            if (apiKeyInput.type === 'password') {
-                apiKeyInput.type = 'text';
-                toggleBtn.textContent = '🙈';
-            } else {
-                apiKeyInput.type = 'password';
-                toggleBtn.textContent = '👁️';
-            }
-        }
+    function togglePassword() {
+    const apiKeyInput = document.getElementById('apiKey');
+    const toggleBtn = document.querySelector('.password-toggle');
+    
+    if (apiKeyInput.type === 'password') {
+    apiKeyInput.type = 'text';
+    toggleBtn.textContent = '🙈';
+    } else {
+    apiKeyInput.type = 'password';
+    toggleBtn.textContent = '👁️';
+    }
+    }
 
-        document.getElementById('summarizerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const generateBtn = document.getElementById('generateBtn');
-            const btnText = document.getElementById('btnText');
-            const errorMessage = document.getElementById('errorMessage');
-            const placeholder = document.getElementById('placeholder');
-            const loading = document.getElementById('loading');
-            const summaryText = document.getElementById('summaryText');
-            const downloadBtn = document.getElementById('downloadBtn');
+    // Switch between markdown and raw text view
+    function switchView(viewType) {
+    const markdownBtn = document.getElementById('markdownBtn');
+    const rawBtn = document.getElementById('rawBtn');
+    const summaryText = document.getElementById('summaryText');
+    const markdownViewer = document.getElementById('markdownViewer');
+    
+    currentView = viewType;
+    
+    if (viewType === 'markdown') {
+    markdownBtn.classList.add('active');
+    rawBtn.classList.remove('active');
+    summaryText.style.display = 'none';
+    markdownViewer.style.display = 'block';
+    } else {
+    rawBtn.classList.add('active');
+    markdownBtn.classList.remove('active');
+    markdownViewer.style.display = 'none';
+    summaryText.style.display = 'block';
+    }
+    }
 
-            // Reset UI
-            errorMessage.style.display = 'none';
-            placeholder.style.display = 'none';
-            summaryText.style.display = 'none';
-            downloadBtn.style.display = 'none';
-            loading.style.display = 'flex';
-            
-            // Disable button
-            generateBtn.disabled = true;
-            btnText.textContent = 'Processing...';
+    // Render markdown content
+    function renderMarkdown(markdownText) {
+    const markdownViewer = document.getElementById('markdownViewer');
+    
+    // Configure marked options for better rendering
+    marked.setOptions({
+    breaks: true, // Convert line breaks to <br>
+    gfm: true,    // GitHub Flavored Markdown
+    });
+    
+    // Convert markdown to HTML and set it
+    markdownViewer.innerHTML = marked.parse(markdownText);
+    }
 
-            try {
-                const response = await fetch('/summarize', {
-                    method: 'POST',
-                    body: formData
-                });
+    document.getElementById('summarizerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const generateBtn = document.getElementById('generateBtn');
+    const btnText = document.getElementById('btnText');
+    const errorMessage = document.getElementById('errorMessage');
+    const placeholder = document.getElementById('placeholder');
+    const loading = document.getElementById('loading');
+    const summaryText = document.getElementById('summaryText');
+    const markdownViewer = document.getElementById('markdownViewer');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const viewToggle = document.getElementById('viewToggle');
 
-                const data = await response.json();
+    // Reset UI
+    errorMessage.style.display = 'none';
+    placeholder.style.display = 'none';
+    summaryText.style.display = 'none';
+    markdownViewer.style.display = 'none';
+    downloadBtn.style.display = 'none';
+    viewToggle.style.display = 'none';
+    loading.style.display = 'flex';
+    
+    // Disable button
+    generateBtn.disabled = true;
+    btnText.textContent = 'Processing...';
 
-                if (response.ok) {
-                    currentSummary = data.summary;
-                    currentVideoTitle = data.title || 'YouTube Video Summary';
-                    
-                    summaryText.textContent = currentSummary;
-                    summaryText.style.display = 'block';
-                    downloadBtn.style.display = 'block';
-                } else {
-                    throw new Error(data.detail || 'Failed to generate summary');
-                }
-            } catch (error) {
-                errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
-                placeholder.style.display = 'flex';
-            } finally {
-                loading.style.display = 'none';
-                generateBtn.disabled = false;
-                btnText.textContent = '✅ Generate Summary';
-            }
-        });
+    try {
+    const response = await fetch('/summarize', {
+    method: 'POST',
+    body: formData
+    });
 
-        async function downloadSummary() {
-            if (!currentSummary) return;
+    const data = await response.json();
 
-            try {
-                const formData = new FormData();
-                formData.append('summary', currentSummary);
-                formData.append('title', currentVideoTitle);
+    if (response.ok) {
+    currentSummary = data.summary;
+    currentVideoTitle = data.title || 'YouTube Video Summary';
+    
+    // Set both text and markdown content
+    summaryText.textContent = currentSummary;
+    renderMarkdown(currentSummary);
+    
+    // Show view toggle and appropriate view
+    viewToggle.style.display = 'block';
+    switchView(currentView);
+    
+    downloadBtn.style.display = 'block';
+    } else {
+    throw new Error(data.detail || 'Failed to generate summary');
+    }
+    } catch (error) {
+    errorMessage.textContent = error.message;
+    errorMessage.style.display = 'block';
+    placeholder.style.display = 'flex';
+    } finally {
+    loading.style.display = 'none';
+    generateBtn.disabled = false;
+    btnText.textContent = '✅ Generate Summary';
+    }
+    });
 
-                const response = await fetch('/download', {
-                    method: 'POST',
-                    body: formData
-                });
+    async function downloadSummary() {
+    if (!currentSummary) return;
 
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = `${currentVideoTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}.md`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                } else {
-                    throw new Error('Failed to download file');
-                }
-            } catch (error) {
-                alert('Error downloading file: ' + error.message);
-            }
-        }
+    try {
+    const formData = new FormData();
+    formData.append('summary', currentSummary);
+    formData.append('title', currentVideoTitle);
 
-        // Auto-resize summary content based on text
-        function adjustSummaryHeight() {
-            const summaryText = document.getElementById('summaryText');
-            if (summaryText.style.display !== 'none') {
-                const content = summaryText.textContent;
-                const lines = content.split('\n').length;
-                const minHeight = Math.max(200, lines * 24);
-                summaryText.style.minHeight = minHeight + 'px';
-            }
-        }
+    const response = await fetch('/download', {
+    method: 'POST',
+    body: formData
+    });
 
-        // Call adjust height when summary is displayed
-        const observer = new MutationObserver(adjustSummaryHeight);
-        observer.observe(document.getElementById('summaryText'), { 
-            attributes: true, 
-            attributeFilter: ['style'] 
-        });
+    if (response.ok) {
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `${currentVideoTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    } else {
+    throw new Error('Failed to download file');
+    }
+    } catch (error) {
+    alert('Error downloading file: ' + error.message);
+    }
+    }
+
+    // Auto-resize summary content based on text
+    function adjustSummaryHeight() {
+    const summaryText = document.getElementById('summaryText');
+    const markdownViewer = document.getElementById('markdownViewer');
+    
+    if (summaryText.style.display !== 'none') {
+    const content = summaryText.textContent;
+    const lines = content.split('\n').length;
+    const minHeight = Math.max(200, lines * 24);
+    summaryText.style.minHeight = minHeight + 'px';
+    }
+    
+    if (markdownViewer.style.display !== 'none') {
+    // Let markdown viewer auto-size based on content
+    markdownViewer.style.minHeight = '200px';
+    }
+    }
+
+    // Call adjust height when summary is displayed
+    const observer = new MutationObserver(adjustSummaryHeight);
+    observer.observe(document.getElementById('summaryText'), { 
+    attributes: true, 
+    attributeFilter: ['style'] 
+    });
+    observer.observe(document.getElementById('markdownViewer'), { 
+    attributes: true, 
+    attributeFilter: ['style'] 
+    });
     </script>
 </body>
 </html>
