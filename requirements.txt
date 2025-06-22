@@ -1,4 +1,5 @@
 openai==1.90.0
-streamlit==1.46.0
+fastapi==0.115.13
 tiktoken==0.9.0
 yt_dlp==2025.6.9
+python-multipart==0.0.20

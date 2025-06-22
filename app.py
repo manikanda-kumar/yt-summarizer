@@ -1,48 +1,64 @@
 #!/usr/bin/env python
-"""
-Streamlit YouTube Video Summarizer App
---------------------------------------
-• Left panel: YouTube URL input and controls
-• Right panel: Live markdown display
-• Markdown files still saved to disk
-• Real-time processing status updates
-
-Dependencies
-------------
-pip install streamlit openai tiktoken yt-dlp
-"""
+#
+# Run locally:  python app.py
+# ----
+import logging
 import math
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple, List
 
-import streamlit as st
-import yt_dlp
-from openai import OpenAI
-import tiktoken
+from fastapi import FastAPI, HTTPException, Form, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
-# --------------------------------------
-# Configuration and Setup
-# --------------------------------------
-st.set_page_config(
-    page_title="YouTube Video Summarizer",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="expanded"
+import yt_dlp    # youtube-dl replacement
+from openai import OpenAI    # pip install openai
+import tiktoken    # pip install tiktoken
+
+# ----
+# FastAPI bootstrap & helpers
+# ----
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+logger = logging.getLogger("yt_summarizer")
+
+app = FastAPI(
+    title="YouTube Video Summarizer",
+    description="Turns any YouTube video into a detailed markdown summary.",
+    version="1.0.0",
 )
 
-# Initialize session state
-if 'summary_content' not in st.session_state:
-    st.session_state.summary_content = ""
-if 'processing' not in st.session_state:
-    st.session_state.processing = False
-if 'last_url' not in st.session_state:
-    st.session_state.last_url = ""
+# CORS so the browser can call the API when the HTML is opened directly
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],    # tighten for production
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --------------------------------------
+# Serve everything inside "static/" under /static
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve the landing page
+@app.get("/", include_in_schema=False)
+def root_index():
+    return FileResponse("static/index.html")
+
+
+# ----
+# OpenAI helper
+# ----
+def get_openai_client(api_key: str) -> OpenAI:
+    if not api_key:
+        raise ValueError("OpenAI API key must be provided.")
+    return OpenAI(api_key=api_key)
+
+# ----
 # Helper Functions
-# --------------------------------------
+# ----
 YOUTUBE_WATCH_RE = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
 
 def fetch_info_and_transcript(url: str) -> Tuple[str, str, List[Dict]]:
@@ -125,7 +141,7 @@ def fetch_info_and_transcript(url: str) -> Tuple[str, str, List[Dict]]:
                                         'text': text
                                     })
             except Exception as e:
-                st.warning(f"Could not parse transcript data: {e}")
+                logger.warning(f"Could not parse transcript data: {e}")
 
         if not transcript:
             raise RuntimeError("No English transcript/captions available for this video")
@@ -136,7 +152,7 @@ def fetch_info_and_transcript(url: str) -> Tuple[str, str, List[Dict]]:
         if "transcript" in str(exc).lower() or "caption" in str(exc).lower():
             raise RuntimeError(f"Transcript not available: {exc}")
         else:
-            st.warning(f"Could not fetch video info - {exc}")
+            logger.warning(f"Could not fetch video info - {exc}")
             raise exc
 
 def extract_video_id(url: str) -> str:
@@ -237,20 +253,6 @@ def split_transcript(transcript: List[Dict], chapters: List[Tuple[str, int]]) ->
                 break
     return buckets
 
-# --------------------------------------
-# OpenAI Functions
-# --------------------------------------
-def get_openai_client(api_key=None):
-    """Initialize OpenAI client with optional API key"""
-    if api_key is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        st.error("Please provide your OpenAI API key.")
-        st.stop()
-    return OpenAI(api_key=api_key)
-
-#_ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
-
 def _num_tokens(txt: str, encoder):
     return len(encoder.encode(txt))
 
@@ -296,7 +298,7 @@ def summarise_long_text(client, encoder, model: str, text: str, max_chunk_tokens
     if cur:
         chunks.append(cur.strip())
 
-    partials = [_summarise_chunk(client,model, c, is_segment) for c in chunks]
+    partials = [_summarise_chunk(client, model, c, is_segment) for c in chunks]
     section_summaries = '\n\n'.join([f'Part {i+1}: {summary}' for i, summary in enumerate(partials)])
     combined_prompt = (
         f"Create a comprehensive and detailed summary by combining and synthesizing the following "
@@ -335,9 +337,9 @@ def create_overall_summary(client, model: str, chapter_summaries: Dict[str, str]
     )
     return resp.choices[0].message.content.strip()
 
-# --------------------------------------
+# ----
 # Document Creation
-# --------------------------------------
+# ----
 DOC_TEMPLATE = """# {title}
 
 ## Overall Summary
@@ -357,10 +359,10 @@ def create_document(title: str, ch_summaries: Dict[str, str], overall_summary: s
     ch_md = "\n\n".join(f"### {t}\n\n{s}" for t, s in ch_summaries.items())
     return DOC_TEMPLATE.format(title=title, overall_summary=overall_summary, chapters=ch_md)
 
-# --------------------------------------
+# ----
 # Main Processing Function
-# --------------------------------------
-def process_youtube_video(video_url: str, model: str, api_key: str, progress_placeholder, status_placeholder):
+# ----
+def process_youtube_video(video_url: str, model: str, api_key: str):
     """Process YouTube video and return markdown content"""
     try:
         # Initialize OpenAI client and encoder
@@ -368,19 +370,16 @@ def process_youtube_video(video_url: str, model: str, api_key: str, progress_pla
         encoder = tiktoken.encoding_for_model(model if model in ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"] else "gpt-3.5-turbo")
 
         # Fetch video info and transcript in one call
-        status_placeholder.info("📥 Fetching video information and transcript...")
+        logger.info("📥 Fetching video information and transcript...")
         video_title, description, transcript = fetch_info_and_transcript(video_url)
-        progress_placeholder.progress(0.30)
 
         # Parse chapters
-        status_placeholder.info("📑 Parsing chapters...")
+        logger.info("📑 Parsing chapters...")
         chapters = parse_chapters(description)
-        progress_placeholder.progress(0.40)
 
         # Split transcript
-        status_placeholder.info("📝 Processing transcript sections...")
+        logger.info("📝 Processing transcript sections...")
         buckets = split_transcript(transcript, chapters)
-        progress_placeholder.progress(0.50)
 
         # Initialize processing variables
         is_segment_based = len(chapters) == 0
@@ -390,132 +389,77 @@ def process_youtube_video(video_url: str, model: str, api_key: str, progress_pla
         total_sections = len(buckets)
 
         for i, (title, text) in enumerate(buckets.items()):
-            status_placeholder.info(f"🔎 Summarizing: {title}")
+            logger.info(f"🔎 Summarizing: {title}")
             chapter_summaries[title] = summarise_long_text(client, encoder, model, text, is_segment=is_segment_based)
-            progress_placeholder.progress(0.50 + (0.30 * (i + 1) / total_sections))
 
         # Create overall summary
-        status_placeholder.info("🧠 Creating overall summary...")
+        logger.info("🧠 Creating overall summary...")
         overall_summary = create_overall_summary(client, model, chapter_summaries, video_title)
-        progress_placeholder.progress(0.90)
 
         # Generate document
-        status_placeholder.info("📄 Generating final document...")
+        logger.info("📄 Generating final document...")
         doc = create_document(video_title, chapter_summaries, overall_summary)
 
-        # Save to disk
-        safe_title = sanitize_filename(video_title)
-        output_file = f"{safe_title}_summary.md"
-        output_path = Path(output_file)
-        output_path.write_text(doc, encoding="utf-8")
-
-        progress_placeholder.progress(1.0)
-        status_placeholder.success(f"✅ Summary completed! Saved to: {output_file}")
-
-        return doc, output_file, word_count(doc)
+        logger.info("✅ Summary completed!")
+        return doc, video_title, word_count(doc)
 
     except Exception as e:
-        status_placeholder.error(f"❌ Error: {str(e)}")
-        return None, None, 0
+        logger.error(f"❌ Error: {str(e)}")
+        raise e
 
 # ----
-# Streamlit UI
+# API endpoints
 # ----
-
-def main():
-    st.title("🎬 YouTube Video Summarizer")
-    st.markdown("---")
-
-    # Create two columns
-    left_col, right_col = st.columns([1, 2])
-
-    with left_col:
-        st.header("📥 Input")
-
-        # API Key input
-        api_key = st.text_input(
-            "OpenAI API Key:",
-            type="password",
-            placeholder="sk-...",
-            help="Enter your OpenAI API key. It will not be stored."
+@app.post("/summarize")
+def summarize_endpoint(
+    api_key: str = Form(...),
+    youtube_url: str = Form(...),
+    ai_model: str = Form(...)
+):
+    try:
+        doc, video_title, wc = process_youtube_video(youtube_url, ai_model, api_key)
+        
+        return {
+            "summary": doc,
+            "title": video_title,
+            "word_count": wc
+        }
+    except Exception as e:
+        logger.error(f"Error processing video: {str(e)}")
+        raise HTTPException(
+            status_code=400, 
+            detail=str(e)
         )
 
-        # URL input
-        video_url = st.text_input(
-            "YouTube URL:",
-            placeholder="https://www.youtube.com/watch?v=...",
-            help="Paste any YouTube video URL here"
+@app.post("/download")
+def download_summary(
+    summary: str = Form(...),
+    title: str = Form(...)
+):
+    try:
+        # Create safe filename
+        safe_title = sanitize_filename(title)
+        filename = f"{safe_title}_summary.md"
+        
+        # Return the markdown content as a file download
+        return Response(
+            content=summary,
+            media_type="text/markdown",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
+    except Exception as e:
+        logger.error(f"Error creating download: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
-        # Model selection
-        model_option = st.selectbox(
-            "AI Model:",
-            ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
-            index=0,
-            help="Choose the OpenAI model for summarization"
-        )
-
-        # Processing button
-        process_button = st.button(
-            "▶️ Generate Summary",
-            disabled=not video_url or not api_key or st.session_state.processing,
-            use_container_width=True
-        )
-
-        # Progress and status
-        progress_placeholder = st.empty()
-        status_placeholder = st.empty()
-
-        # File info and download button (moved here)
-        if st.session_state.summary_content:
-            st.markdown("---")
-            st.subheader("ℹ️ Summary Info")
-            st.success(f"💾 Saved as: `{st.session_state.get('output_file', 'summary.md')}`")
-            st.info(f"📝 Word count: {st.session_state.get('word_count', 0):,}")
-
-            st.download_button(
-                label="⬇️ Download Markdown",
-                data=st.session_state.summary_content,
-                file_name=st.session_state.get('output_file', 'summary.md'),
-                mime="text/markdown",
-                use_container_width=True
-            )
-
-    with right_col:
-        st.header("📝 Summary")
-
-        # Markdown display area
-        markdown_placeholder = st.empty()
-
-        if not st.session_state.summary_content:
-            markdown_placeholder.info("💡 Enter a YouTube URL and click 'Generate Summary' to see the results here!")
-        else:
-            markdown_placeholder.markdown(st.session_state.summary_content)
-
-    # Process video when button is clicked
-    if process_button and video_url and api_key:
-        st.session_state.processing = True
-        st.session_state.last_url = video_url
-
-        # Clear previous content
-        st.session_state.summary_content = ""
-        markdown_placeholder.info("⏳ Processing video... Please wait...")
-
-        # Process the video
-        doc, output_file, word_count_result = process_youtube_video(
-            video_url, model_option, api_key, progress_placeholder, status_placeholder
-        )
-
-        if doc:
-            st.session_state.summary_content = doc
-            st.session_state.output_file = output_file
-            st.session_state.word_count = word_count_result
-            markdown_placeholder.markdown(doc)
-
-        st.session_state.processing = False
-
-        # Clear progress indicators
-        progress_placeholder.empty()
-
+# ----
+# Dev entry-point
+# ----
 if __name__ == "__main__":
-    main()
+    import uvicorn
+
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        reload=True,
+    )
