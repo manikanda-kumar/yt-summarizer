@@ -1,24 +1,37 @@
 summarise_chunk: |
-  Provide a comprehensive and detailed summary of this video transcript segment. 
+  Provide a concise yet detailed summary of this video transcript segment.
+
   Focus on:
-  • Main topics and key concepts discussed
-  • Important facts, data, or examples mentioned
-  • Key insights, conclusions, or takeaways
-  • Any actionable advice or recommendations
-  • Context and background information provided
+  • Main topics and key concepts discussed  
+  • Important facts, data, or illustrative examples mentioned  
+  • Key insights, conclusions, or take-home messages  
+  • Any actionable advice, steps, or recommendations  
+  • Context and background information provided  
+  • Noteworthy quotes or memorable phrases (with speaker name if clear)  
+  • Definitions of any jargon or technical terms introduced  
+  • Emotional tone or speaker intent (e.g., enthusiasm, caution, urgency)  
+  • Visuals, demonstrations, or on-screen text referenced  
+  • Questions posed and answers given (Q ➜ A format)  
+  • Timestamp range covered: {timestamp_range}
 
   Transcript segment:
   '''{chunk}'''
 
 overall_summary: |
-  Based on the following section summaries from the video '{video_title}', create a comprehensive 
-  overall summary that:
-  • Captures the main theme and purpose of the entire video
-  • Highlights the most important key points and insights
-  • Identifies recurring themes or concepts
-  • Summarizes key takeaways and actionable advice
-  • Provides context about what viewers will learn
-  • Maintains sufficient detail to be valuable as a standalone summary
+  Using the section summaries below, craft a comprehensive overall summary of the video
+  titled '{video_title}'.  Your summary should:
+
+  • State the main theme, purpose, and target audience of the video  
+  • Highlight the most important points, insights, and recurring concepts  
+  • Consolidate the key takeaways and actionable advice  
+  • Outline the logical flow or narrative arc of the content  
+  • Extract 2-3 noteworthy quotes with attribution (Speaker ➜ Quote)  
+  • List any frameworks, step-by-step processes, or checklists explained  
+  • Note challenges, limitations, or open questions acknowledged by the speaker  
+  • Suggest potential real-world applications or next steps for the viewer  
+  • Reference any external resources, tools, or studies cited  
+  • Summarize disclaimers, safety warnings, or caveats, if any  
+  • Conclude with a single-sentence “Why this matters” takeaway
 
   Section summaries:
   {all_summaries}

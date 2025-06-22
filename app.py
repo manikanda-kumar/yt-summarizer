@@ -16,13 +16,11 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, List, Tuple
-import time
 
 import streamlit as st
 import yt_dlp
 from openai import OpenAI
 import tiktoken
-import yaml
 
 # --------------------------------------
 # Configuration and Setup
@@ -255,12 +253,6 @@ def get_openai_client(api_key=None):
 
 def _num_tokens(txt: str, encoder):
     return len(encoder.encode(txt))
-
-def load_prompts(path="prompts.yaml"):
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-    
-PROMPTS = load_prompts()
 
 def _summarise_chunk(client, model: str, chunk: str, is_segment: bool = False) -> str:
     """Summarize a chunk of text with enhanced prompts for better quality"""
