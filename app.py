@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """
 Streamlit YouTube Video Summarizer App
-────
-• Left panel: YouTube URL input and controls
-• Right panel: Live markdown display
-• Markdown files still saved to disk
-• Real-time processing status updates
+ââââ
+â¢ Left panel: YouTube URL input and controls
+â¢ Right panel: Live markdown display
+â¢ Markdown files still saved to disk
+â¢ Real-time processing status updates
 
 Dependencies
-────
+ââââ
 pip install streamlit openai tiktoken yt-dlp
 """
 import math
@@ -23,12 +23,12 @@ import yt_dlp
 from openai import OpenAI
 import tiktoken
 
-# ────
+# ââââ
 # Configuration and Setup
-# ────
+# ââââ
 st.set_page_config(
     page_title="YouTube Video Summarizer",
-    page_icon="📺",
+    page_icon="ðº",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -41,9 +41,9 @@ if 'processing' not in st.session_state:
 if 'last_url' not in st.session_state:
     st.session_state.last_url = ""
 
-# ────
+# ââââ
 # Helper Functions
-# ────
+# ââââ
 YOUTUBE_WATCH_RE = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
 
 def fetch_info_and_transcript(url: str) -> Tuple[str, str, List[Dict]]:
@@ -239,9 +239,9 @@ def split_transcript(transcript: List[Dict], chapters: List[Tuple[str, int]]) ->
                 break
     return buckets
 
-# ────
+# ââââ
 # OpenAI Functions
-# ────
+# ââââ
 @st.cache_resource
 def get_openai_client():
     """Initialize OpenAI client with caching"""
@@ -263,11 +263,11 @@ def _summarise_chunk(model: str, chunk: str, is_segment: bool = False) -> str:
         prompt = (
             f"Provide a comprehensive and detailed summary of this video transcript segment. "
             f"Focus on:\n"
-            f"• Main topics and key concepts discussed\n"
-            f"• Important facts, data, or examples mentioned\n"
-            f"• Key insights, conclusions, or takeaways\n"
-            f"• Any actionable advice or recommendations\n"
-            f"• Context and background information provided\n\n"
+            f"â¢ Main topics and key concepts discussed\n"
+            f"â¢ Important facts, data, or examples mentioned\n"
+            f"â¢ Key insights, conclusions, or takeaways\n"
+            f"â¢ Any actionable advice or recommendations\n"
+            f"â¢ Context and background information provided\n\n"
             f"Transcript segment:\n'''{chunk}'''"
         )
     else:
@@ -322,12 +322,12 @@ def create_overall_summary(model: str, chapter_summaries: Dict[str, str], video_
     prompt = (
         f"Based on the following section summaries from the video '{video_title}', create a comprehensive "
         f"overall summary that:\n\n"
-        f"• Captures the main theme and purpose of the entire video\n"
-        f"• Highlights the most important key points and insights\n"
-        f"• Identifies recurring themes or concepts\n"
-        f"• Summarizes key takeaways and actionable advice\n"
-        f"• Provides context about what viewers will learn\n"
-        f"• Maintains sufficient detail to be valuable as a standalone summary\n\n"
+        f"â¢ Captures the main theme and purpose of the entire video\n"
+        f"â¢ Highlights the most important key points and insights\n"
+        f"â¢ Identifies recurring themes or concepts\n"
+        f"â¢ Summarizes key takeaways and actionable advice\n"
+        f"â¢ Provides context about what viewers will learn\n"
+        f"â¢ Maintains sufficient detail to be valuable as a standalone summary\n\n"
         f"Section summaries:\n{all_summaries}"
     )
     
@@ -338,9 +338,9 @@ def create_overall_summary(model: str, chapter_summaries: Dict[str, str], video_
     )
     return resp.choices[0].message.content.strip()
 
-# ────
+# ââââ
 # Document Creation
-# ────
+# ââââ
 DOC_TEMPLATE = """# {title}
 
 ## Overall Summary
@@ -360,26 +360,26 @@ def create_document(title: str, ch_summaries: Dict[str, str], overall_summary: s
     ch_md = "\n\n".join(f"### {t}\n\n{s}" for t, s in ch_summaries.items())
     return DOC_TEMPLATE.format(title=title, overall_summary=overall_summary, chapters=ch_md)
 
-# ────
+# ââââ
 # Main Processing Function
-# ────
+# ââââ
 # ... (keep all the existing code the same until the process_youtube_video function)
 
 def process_youtube_video(video_url: str, model: str, progress_placeholder, status_placeholder):
     """Process YouTube video and return markdown content"""
     try:
         # Fetch video info and transcript in one call
-        status_placeholder.info("🔍 Fetching video information and transcript...")
+        status_placeholder.info("ð Fetching video information and transcript...")
         video_title, description, transcript = fetch_info_and_transcript(video_url)
         progress_placeholder.progress(0.30)  # Changed from 30 to 0.30
         
         # Parse chapters
-        status_placeholder.info("📑 Parsing chapters...")
+        status_placeholder.info("ð Parsing chapters...")
         chapters = parse_chapters(description)
         progress_placeholder.progress(0.40)  # Changed from 40 to 0.40
         
         # Split transcript
-        status_placeholder.info("✂️ Processing transcript sections...")
+        status_placeholder.info("âï¸ Processing transcript sections...")
         buckets = split_transcript(transcript, chapters)
         progress_placeholder.progress(0.50)  # Changed from 50 to 0.50
         
@@ -391,18 +391,18 @@ def process_youtube_video(video_url: str, model: str, progress_placeholder, stat
         total_sections = len(buckets)
         
         for i, (title, text) in enumerate(buckets.items()):
-            status_placeholder.info(f"🤖 Summarizing: {title}")
+            status_placeholder.info(f"ð¤ Summarizing: {title}")
             chapter_summaries[title] = summarise_long_text(model, text, is_segment=is_segment_based)
             # Fixed progress calculation to stay within 0.0-1.0 range
             progress_placeholder.progress(0.50 + (0.30 * (i + 1) / total_sections))
         
         # Create overall summary
-        status_placeholder.info("📋 Creating overall summary...")
+        status_placeholder.info("ð Creating overall summary...")
         overall_summary = create_overall_summary(model, chapter_summaries, video_title)
         progress_placeholder.progress(0.90)  # Changed from 90 to 0.90
         
         # Generate document
-        status_placeholder.info("📄 Generating final document...")
+        status_placeholder.info("ð Generating final document...")
         doc = create_document(video_title, chapter_summaries, overall_summary)
         
         # Save to disk
@@ -412,26 +412,26 @@ def process_youtube_video(video_url: str, model: str, progress_placeholder, stat
         output_path.write_text(doc, encoding="utf-8")
         
         progress_placeholder.progress(1.0)  # Changed from 100 to 1.0
-        status_placeholder.success(f"✅ Summary completed! Saved to: {output_file}")
+        status_placeholder.success(f"â Summary completed! Saved to: {output_file}")
         
         return doc, output_file, word_count(doc)
         
     except Exception as e:
-        status_placeholder.error(f"❌ Error: {str(e)}")
+        status_placeholder.error(f"â Error: {str(e)}")
         return None, None, 0
     
-# ────
+# ââââ
 # Streamlit UI
-# ────
+# ââââ
 def main():
-    st.title("📺 YouTube Video Summarizer")
+    st.title("ðº YouTube Video Summarizer")
     st.markdown("---")
     
     # Create two columns
     left_col, right_col = st.columns([1, 2])
     
     with left_col:
-        st.header("🎯 Input")
+        st.header("ð¯ Input")
         
         # URL input
         video_url = st.text_input(
@@ -450,7 +450,7 @@ def main():
         
         # Processing button
         process_button = st.button(
-            "🚀 Generate Summary",
+            "ð Generate Summary",
             disabled=not video_url or st.session_state.processing,
             use_container_width=True
         )
@@ -462,17 +462,17 @@ def main():
         # File info
         if st.session_state.summary_content:
             st.markdown("---")
-            st.subheader("📊 Summary Info")
+            st.subheader("ð Summary Info")
             # This will be updated after processing
             
     with right_col:
-        st.header("📖 Summary")
+        st.header("ð Summary")
         
         # Markdown display area
         markdown_placeholder = st.empty()
         
         if not st.session_state.summary_content:
-            markdown_placeholder.info("👈 Enter a YouTube URL and click 'Generate Summary' to see the results here!")
+            markdown_placeholder.info("ð Enter a YouTube URL and click 'Generate Summary' to see the results here!")
         else:
             markdown_placeholder.markdown(st.session_state.summary_content)
     
@@ -483,7 +483,7 @@ def main():
         
         # Clear previous content
         st.session_state.summary_content = ""
-        markdown_placeholder.info("🔄 Processing video... Please wait...")
+        markdown_placeholder.info("ð Processing video... Please wait...")
         
         # Process the video
         doc, output_file, word_count_result = process_youtube_video(
@@ -496,12 +496,12 @@ def main():
             
             # Update file info in left column
             with left_col:
-                st.success(f"📁 Saved as: `{output_file}`")
-                st.info(f"📊 Word count: {word_count_result:,}")
+                st.success(f"ð Saved as: `{output_file}`")
+                st.info(f"ð Word count: {word_count_result:,}")
                 
                 # Download button
                 st.download_button(
-                    label="💾 Download Markdown",
+                    label="ð¾ Download Markdown",
                     data=doc,
                     file_name=output_file,
                     mime="text/markdown",
@@ -515,3 +515,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
